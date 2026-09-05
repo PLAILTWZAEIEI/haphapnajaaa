@@ -5,7 +5,6 @@ import time
 
 st.set_page_config(page_title="...", page_icon="✨")
 
-# ซ่อน UI ของ Streamlit บางส่วนเพื่อความคลีน
 st.markdown("""
     <style>
     #MainMenu {visibility: hidden;}
@@ -41,123 +40,116 @@ else:
     
     fig = go.Figure()
 
-    # --- ฟังก์ชันสร้างเค้กแบบตัน 3D ---
-    def add_solid_cake_layer(fig, r, h, z_offset, color):
+    # --- 1. สร้างฐานจานและก้อนเค้ก 3D สีสันสดใส ---
+    def add_cake_layer(fig, r, h, z_offset, color):
         theta = np.linspace(0, 2*np.pi, 80)
         z = np.linspace(0, h, 15)
-        theta_grid, z_grid = np.meshgrid(theta, z)
-        x_side = r * np.cos(theta_grid)
-        y_side = r * np.sin(theta_grid)
-        z_side = z_grid + z_offset
+        tg, zg = np.meshgrid(theta, z)
         
-        r_disc = np.linspace(0, r, 15)
-        r_grid, theta_disc_grid = np.meshgrid(r_disc, theta)
-        x_disc = r_grid * np.cos(theta_disc_grid)
-        y_disc = r_grid * np.sin(theta_disc_grid)
+        rd = np.linspace(0, r, 15)
+        rg, tdg = np.meshgrid(rd, theta)
 
         cs = [[0, color], [1, color]]
-        fig.add_trace(go.Surface(x=x_side, y=y_side, z=z_side, colorscale=cs, showscale=False, lighting=dict(ambient=0.7, diffuse=0.8)))
-        fig.add_trace(go.Surface(x=x_disc, y=y_disc, z=np.full_like(x_disc, z_offset + h), colorscale=cs, showscale=False, lighting=dict(ambient=0.7, diffuse=0.8)))
+        # ด้านข้าง
+        fig.add_trace(go.Surface(x=r*np.cos(tg), y=r*np.sin(tg), z=zg+z_offset, colorscale=cs, showscale=False, lighting=dict(ambient=0.7, diffuse=0.8)))
+        # ฝาบน
+        fig.add_trace(go.Surface(x=rg*np.cos(tdg), y=rg*np.sin(tdg), z=np.full_like(rg, z_offset+h), colorscale=cs, showscale=False, lighting=dict(ambient=0.7, diffuse=0.8)))
 
-    # --- ฟังก์ชันสร้างครีมไหลย้อย (Dripping White Cream) ---
-    def add_dripping_cream(fig, r, z_top, wave_freq=8, wave_amp=0.15, color="#FFFFFF"):
+    # จานรองสีฟ้าพาสเทล
+    add_cake_layer(fig, r=2.4, h=0.1, z_offset=-0.1, color="#A0C4FF")
+    # เค้กชั้นล่างสีชมพูราสเบอร์รีฉ่ำๆ
+    add_cake_layer(fig, r=2.0, h=0.9, z_offset=0, color="#FF6B8B")
+    # เค้กชั้นบนสีชมพูสตรอว์เบอร์รี
+    add_cake_layer(fig, r=1.4, h=0.8, z_offset=0.9, color="#FF8EAE")
+
+    # --- 2. ซอสครีมขาวไหลย้อย (Dripping Cream) ---
+    def add_dripping_cream(fig, r, z_top, wave_freq=8, wave_amp=0.2):
         theta = np.linspace(0, 2*np.pi, 100)
-        # สมการคลื่นซายน์จำลองลวดลายครีมไหลย้อย
-        z_wave = z_top - 0.15 - np.abs(np.sin(wave_freq * theta / 2)) * wave_amp
+        z_wave = z_top - 0.12 - np.abs(np.sin(wave_freq * theta / 2)) * wave_amp
         r_ext = r + 0.03
-        x_side = r_ext * np.cos(theta)
-        y_side = r_ext * np.sin(theta)
         
-        # วาดเส้นขอบครีมหยด
         fig.add_trace(go.Scatter3d(
-            x=x_side, y=y_side, z=z_wave,
-            mode='lines', line=dict(color=color, width=6), showlegend=False
+            x=r_ext * np.cos(theta), y=r_ext * np.sin(theta), z=z_wave,
+            mode='lines', line=dict(color='#FFF0F5', width=7), showlegend=False
         ))
         
-        # ฝาหน้าครีมบนหน้าเค้ก
-        r_disc = np.linspace(0, r_ext, 15)
-        rg, tg = np.meshgrid(r_disc, theta)
+        rd = np.linspace(0, r_ext, 15)
+        rg, tg = np.meshgrid(rd, theta)
         fig.add_trace(go.Surface(
             x=rg * np.cos(tg), y=rg * np.sin(tg), z=np.full_like(rg, z_top + 0.01),
-            colorscale=[[0, color], [1, color]], showscale=False
+            colorscale=[[0, '#FFF0F5'], [1, '#FFF0F5']], showscale=False
         ))
 
-    # ฐานจานรองเค้กสีฟ้า
-    add_solid_cake_layer(fig, r=2.4, h=0.1, z_offset=-0.1, color="#B0C4DE")
+    add_dripping_cream(fig, r=2.0, z_top=0.9, wave_freq=8, wave_amp=0.25)
+    add_dripping_cream(fig, r=1.4, z_top=1.7, wave_freq=6, wave_amp=0.2)
 
-    # เค้กชั้นล่างและชั้นบน (ชมพูหวาน)
-    add_solid_cake_layer(fig, r=2.0, h=0.9, z_offset=0, color="#FF99B2")
-    add_dripping_cream(fig, r=2.0, z_top=0.9, wave_freq=7, wave_amp=0.25)
+    # --- 3. เพิ่มเม็ดเกล็ดน้ำตาลสพริงเคิลส์หลากสีสัน (Colorful Sprinkles) ---
+    np.random.seed(42)
+    colors = ['#FF597B', '#FFD15C', '#4D96FF', '#6BCB77', '#F77E21', '#9B51E0']
+    
+    # สพริงเคิลส์โรยบนชั้นล่าง
+    for _ in range(40):
+        ang = np.random.uniform(0, 2*np.pi)
+        rad = np.random.uniform(1.45, 1.95)
+        c = np.random.choice(colors)
+        fig.add_trace(go.Scatter3d(
+            x=[rad*np.cos(ang)], y=[rad*np.sin(ang)], z=[0.92],
+            mode='markers', marker=dict(size=4, color=c), showlegend=False
+        ))
 
-    add_solid_cake_layer(fig, r=1.4, h=0.8, z_offset=0.9, color="#FFB3C6")
-    add_dripping_cream(fig, r=1.4, z_top=1.7, wave_freq=5, wave_amp=0.2)
-
-    # --- ลูกเชอร์รี่ประดับบนเค้ก (Cherries & Dark Cherries) ---
-    def add_cherry(fig, x, y, z, color='#D2143A', stem=True):
+    # --- 4. สตรอว์เบอร์รีและลูกเชอร์รี่ประดับหน้าเค้ก ---
+    def add_strawberry(fig, x, y, z):
+        # ผลสตรอว์เบอร์รีสีแดงสด
         fig.add_trace(go.Scatter3d(
             x=[x], y=[y], z=[z],
-            mode='markers', marker=dict(size=10, color=color), showlegend=False
+            mode='markers', marker=dict(size=12, color='#E60026', symbol='diamond'), showlegend=False
         ))
-        if stem:
-            fig.add_trace(go.Scatter3d(
-                x=[x, x + 0.05], y=[y, y + 0.05], z=[z, z + 0.25],
-                mode='lines', line=dict(color='#2D5A27', width=3), showlegend=False
-            ))
+        # ขั้วใบไม้สีเขียวสด
+        fig.add_trace(go.Scatter3d(
+            x=[x], y=[y], z=[z+0.08],
+            mode='markers', marker=dict(size=6, color='#2ECC71', symbol='circle'), showlegend=False
+        ))
 
-    # เชอร์รี่สีม่วงเข้มชั้นล่าง
-    for angle in [0, 2*np.pi/3, 4*np.pi/3]:
-        cx, cy = 1.6 * np.cos(angle), 1.6 * np.sin(angle)
-        add_cherry(fig, cx, cy, 0.5, color='#3B1C32')
-
-    # กองลูกเชอร์รี่สดแดงบนยอดเค้ก
-    add_cherry(fig, 0, 0, 1.95, color='#E60026')
+    # วางสตรอว์เบอร์รีบนยอดเค้กชั้นบน
+    add_strawberry(fig, 0, 0, 1.82)
     for angle in np.linspace(0, 2*np.pi, 5, endpoint=False):
-        cx, cy = 0.45 * np.cos(angle), 0.45 * np.sin(angle)
-        add_cherry(fig, cx, cy, 1.85, color='#FF1A40')
+        cx, cy = 0.5 * np.cos(angle), 0.5 * np.sin(angle)
+        add_strawberry(fig, cx, cy, 1.78)
 
-    # --- ปักเทียน 3D ตามอายุ ---
+    # --- 5. ปักเทียน 3D ลายทาง + เปลวไฟสว่าง ---
     age = st.session_state.age
     for i in range(age):
         angle = (2 * np.pi / age) * i
-        cx, cy = 0.9 * np.cos(angle), 0.9 * np.sin(angle)
+        cx, cy = 0.95 * np.cos(angle), 0.95 * np.sin(angle)
+        # ตัวเทียนสีเหลืองสดใส
         fig.add_trace(go.Scatter3d(
-            x=[cx, cx], y=[cy, cy], z=[1.7, 2.2],
-            mode='lines', line=dict(color='white', width=5), showlegend=False
+            x=[cx, cx], y=[cy, cy], z=[1.7, 2.25],
+            mode='lines', line=dict(color='#FFEA20', width=6), showlegend=False
         ))
+        # เปลวไฟสีส้มสว่าง
         fig.add_trace(go.Scatter3d(
-            x=[cx], y=[cy], z=[2.25],
-            mode='markers', marker=dict(size=5, color='orange', symbol='circle'), showlegend=False
+            x=[cx], y=[cy], z=[2.3],
+            mode='markers', marker=dict(size=7, color='#FF5722', symbol='circle'), showlegend=False
         ))
 
-    # --- สร้างเฟรมสำหรับ Fade-in และหมุน 3D + ปุ่มควบคุมการหมุน (Start / Pause) ---
+    # --- 6. แอนิเมชัน Fade-in + หมุน 3D + ปุ่มควบคุม ---
     frames = []
-    
-    # 1. เฟรม Fade-in (ค่อยๆ ชัดขึ้น)
-    for op in np.linspace(0.1, 1.0, 6):
+    # Fade-in
+    for op in np.linspace(0.1, 1.0, 5):
         frames.append(go.Frame(
-            layout=dict(
-                scene=dict(
-                    camera=dict(eye=dict(x=1.8, y=1.8, z=1.2))
-                )
-            ),
+            layout=dict(scene=dict(camera=dict(eye=dict(x=1.8, y=1.8, z=1.2)))),
             name=f"fade_{op}"
         ))
-
-    # 2. เฟรมหมุนรอบตัวเอง 360 องศา
+    # หมุน 360 องศา
     for angle_deg in range(0, 360, 6):
         rad = np.radians(angle_deg)
         frames.append(go.Frame(
-            layout=dict(
-                scene=dict(
-                    camera=dict(eye=dict(x=1.8 * np.cos(rad), y=1.8 * np.sin(rad), z=1.2))
-                )
-            ),
+            layout=dict(scene=dict(camera=dict(eye=dict(x=1.8 * np.cos(rad), y=1.8 * np.sin(rad), z=1.2)))),
             name=f"spin_{angle_deg}"
         ))
 
     fig.frames = frames
 
-    # ปุ่มกด "หมุนเค้ก" และ "หยุดหมุน" ด้านล่างรูป
     fig.update_layout(
         scene=dict(
             xaxis=dict(visible=False),
@@ -175,7 +167,7 @@ else:
                 dict(
                     label="▶ หมุนเค้ก",
                     method="animate",
-                    args=[None, {"frame": {"duration": 80, "redraw": True}, "fromcurrent": True, "transition": {"duration": 0}}]
+                    args=[None, {"frame": {"duration": 70, "redraw": True}, "fromcurrent": True, "transition": {"duration": 0}}]
                 ),
                 dict(
                     label="⏸ หยุดหมุน",
